@@ -24,6 +24,8 @@ Maarten bouwt hier samen met Claude simpele tradingbots voor een Alpaca **paper*
 
 ## Dashboard
 
+Na elke wijziging aan `docs/`: verhoog `?v=` achter `bots.js` en `app.js` in `docs/index.html`, anders laden browsers een oude versie uit de cache.
+
 `docs/index.html` + `docs/app.js` leest via de Alpaca REST API (alleen GET) account, posities, orders en klok. Rekenwerk staat in `app.js` (`botStats`, `recentTrades`) en is in Node te testen via `module.exports`.
 
 ## Analyse

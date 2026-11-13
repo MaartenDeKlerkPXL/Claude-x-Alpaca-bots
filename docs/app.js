@@ -210,7 +210,13 @@
   var timeFmt = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   var clockFmt = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
 
-  function $(sel) { return document.querySelector(sel); }
+  // Bestaat een element niet (bijv. een oudere pagina uit de cache), dan schrijven we naar een
+  // los, onzichtbaar element in plaats van vast te lopen.
+  function $(sel) {
+    var n = document.querySelector(sel);
+    if (!n) { console.warn('Dashboard: element ontbreekt', sel); n = document.createElement('div'); }
+    return n;
+  }
   function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
