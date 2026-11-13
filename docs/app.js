@@ -89,8 +89,29 @@
     });
   }
 
+  // Eerste uitgevoerde trade van een van de bots: vanaf dan tellen de bots.
+  function firstFill(bots, orderRows) {
+    var syms = {};
+    bots.forEach(function (b) { b.symbols.forEach(function (s) { syms[norm(s)] = true; }); });
+    var f = fills(orderRows).filter(function (r) { return syms[norm(r.symbol)]; })[0];
+    return f ? f.filled_at : null;
+  }
+
+  // Hoe lang geleden, in gewone woorden: '1 dag', '3 weken', '4 maanden', '1 jaar en 2 maanden'.
+  function age(fromIso, now) {
+    var a = new Date(fromIso), b = now ? new Date(now) : new Date();
+    var days = Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 864e5);
+    if (days < 1) return 'minder dan een dag';
+    if (days < 14) return days === 1 ? '1 dag' : days + ' dagen';
+    if (days < 61) return Math.floor(days / 7) + ' weken';
+    var months = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()) - (b.getDate() < a.getDate() ? 1 : 0);
+    if (months < 12) return months + ' maanden';
+    var y = Math.floor(months / 12), m = months % 12;
+    return y + ' jaar' + (m ? ' en ' + m + (m === 1 ? ' maand' : ' maanden') : '');
+  }
+
   if (typeof module !== 'undefined') {
-    module.exports = { flattenOrders: flattenOrders, botStats: botStats, recentTrades: recentTrades };
+    module.exports = { flattenOrders: flattenOrders, botStats: botStats, recentTrades: recentTrades, firstFill: firstFill, age: age };
     return;
   }
 
@@ -227,6 +248,14 @@
     document.body.dataset.state = state; // 'keys' | 'loading' | 'ready' | 'error'
   }
 
+  var longDate = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+  function renderSince(first) {
+    var since = $('#sum-since'), dur = $('#sum-age');
+    if (!first) { since.textContent = 'nog niet'; dur.textContent = 'nog geen trades'; return; }
+    since.textContent = longDate.format(new Date(first));
+    dur.textContent = age(first);
+  }
+
   function renderSummary(stats, account) {
     var total = r2(stats.reduce(function (t, s) { return t + s.total; }, 0));
     var realized = r2(stats.reduce(function (t, s) { return t + s.realized; }, 0));
@@ -346,6 +375,7 @@
         var stats = botStats(bots, r[1], rows);
         renderMarket(r[4], r[3]);
         renderSummary(stats, r[0]);
+        renderSince(firstFill(bots, rows));
         renderBots(stats);
         renderTrades(recentTrades(bots, rows, 30));
         $('#updated').textContent = 'Bijgewerkt om ' + new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
