@@ -1,0 +1,10 @@
+# Geheimen: nooit committen
+keys.env
+*.env
+
+# Logs en lokale resultaten
+*.log
+trades_log.csv
+scalp_log.csv
+__pycache__/
+.DS_Store

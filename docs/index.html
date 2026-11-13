@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Mijn tradingbots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F4F6F9;
+    --grid: rgba(61, 90, 254, 0.06);
+    --surface: #FFFFFF;
+    --line: #E1E5EC;
+    --text: #161A23;
+    --muted: #586071;
+    --pos: #12805C;
+    --neg: #C2362B;
+    --warn: #B26B00;
+    --ink: #3D5AFE;
+    --shadow: 0 1px 2px rgba(22, 26, 35, 0.04), 0 8px 24px -12px rgba(22, 26, 35, 0.10);
+
+    --font-ui: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-num: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --text-sm: 0.8125rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 2rem;
+
+    --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px; --s5: 32px; --s6: 48px;
+    --radius: 14px;
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10131A;
+      --grid: rgba(142, 162, 255, 0.05);
+      --surface: #171B24;
+      --line: #262C38;
+      --text: #E7E9EE;
+      --muted: #9AA1B0;
+      --pos: #4CC38A;
+      --neg: #FF7A6E;
+      --warn: #F0B04A;
+      --ink: #8EA2FF;
+      --shadow: none;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    color: var(--text);
+    background-color: var(--bg);
+    /* ruitjespapier: het is tenslotte paper trading */
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: var(--s5) var(--s3) var(--s6); display: grid; gap: var(--s5); }
+  @media (min-width: 720px) { .wrap { padding: var(--s6) var(--s4); gap: var(--s6); } }
+
+  .wrap > * { min-width: 0; }
+  .muted { color: var(--muted); }
+  .small { font-size: var(--text-sm); }
+  .is-pos { color: var(--pos); }
+  .is-neg { color: var(--neg); }
+  .num-xl { font-family: var(--font-num); font-weight: 600; font-size: var(--text-xl); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.025em; }
+
+  /* kop */
+  .head { display: grid; gap: var(--s3); }
+  .head-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); justify-content: space-between; }
+  .pill { display: inline-flex; align-items: center; gap: var(--s2); font-size: var(--text-sm); color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 2px 12px; }
+  .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  #market[data-open="yes"]::before { background: var(--pos); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pos) 22%, transparent); }
+  .title { font-family: var(--font-num); font-weight: 700; font-size: clamp(2.25rem, 6vw, 3.25rem); line-height: 1.05; margin: 0; letter-spacing: -0.035em; }
+  .lede { margin: 0; max-width: 60ch; color: var(--muted); font-size: var(--text-lg); line-height: 1.5; }
+  .lede b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .lede b.is-pos { color: var(--pos); } .lede b.is-neg { color: var(--neg); }
+  .tools { display: flex; align-items: center; gap: var(--s3); font-size: var(--text-sm); color: var(--muted); }
+
+  button, .btn {
+    font: inherit; font-size: var(--text-sm); font-weight: 500; color: var(--text);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 14px; min-height: 36px; cursor: pointer;
+    transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-out);
+  }
+  button:hover { border-color: var(--muted); }
+  button:active { transform: scale(0.97); }
+  button.primary { background: var(--ink); border-color: var(--ink); color: #fff; padding: 10px 20px; min-height: 44px; }
+  button.link { border: 0; background: none; padding: 0; min-height: 0; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .is-refreshing #refresh { opacity: 0.6; pointer-events: none; }
+
+  h2 { font-size: var(--text-lg); font-weight: 600; margin: 0 0 var(--s3); }
+
+  /* tegels */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: var(--s3); }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s4); display: grid; gap: var(--s1); box-shadow: var(--shadow); }
+  .tile .label { font-size: var(--text-sm); color: var(--muted); }
+
+  /* bots */
+  .bots { display: grid; grid-template-columns: 1fr; gap: var(--s3); }
+  @media (min-width: 760px) { .bots { grid-template-columns: repeat(2, 1fr); } }
+  .bot {
+    position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: var(--s4); display: grid; gap: var(--s3); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .bot::before { content: ""; position: absolute; left: 0; top: var(--s4); bottom: var(--s4); width: 3px; border-radius: 0 3px 3px 0; background: var(--bot); }
+  .bot-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+  .bot-name { margin: 0; font-size: var(--text-lg); font-weight: 600; }
+  .status { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-sm); color: var(--muted); }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--muted); }
+  .status[data-on="yes"]::before { background: var(--pos); border-color: var(--pos); }
+  .bot-desc { margin: 0; color: var(--muted); max-width: 60ch; }
+  .bot-result { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s3); }
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3); margin: 0; padding: var(--s3) 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  @media (min-width: 480px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+  .stats div { display: grid; gap: 2px; }
+  .stats dt { font-size: var(--text-sm); color: var(--muted); }
+  .stats dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .budget { display: grid; gap: 6px; }
+  .bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--bot); }
+  .bot-meta { margin: 0; }
+  .empty { color: var(--muted); margin: 0; }
+
+  /* trades */
+  .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+  th { text-align: left; font-weight: 500; color: var(--muted); padding: 12px var(--s3); border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 12px var(--s3); border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: 0; }
+  .num { text-align: right; }
+  .bot-tag { display: inline-flex; align-items: center; gap: 6px; }
+  .bot-tag::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--bot); }
+  .side { font-weight: 500; }
+  .side[data-side="buy"] { color: var(--pos); }
+  .side[data-side="sell"] { color: var(--warn); }
+
+  /* nieuwe bot */
+  details.add { background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); padding: var(--s3) var(--s4); }
+  details.add summary { cursor: pointer; font-weight: 600; }
+  details.add p, details.add ol { color: var(--muted); max-width: 62ch; }
+  details.add ol { padding-left: 1.25em; }
+  code { font-size: 0.9em; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+
+  /* sleutels */
+  .keys { max-width: 480px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s5) var(--s4); display: grid; gap: var(--s3); box-shadow: var(--shadow); }
+  .keys h2 { margin: 0; }
+  .keys p { margin: 0; color: var(--muted); }
+  .field { display: grid; gap: 6px; }
+  .field label { font-size: var(--text-sm); font-weight: 500; }
+  .field input { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 44px; }
+  .note { font-size: var(--text-sm); color: var(--muted); }
+  .alert { font-size: var(--text-sm); color: var(--neg); margin: 0; }
+  .alert::before { content: "! "; font-weight: 700; }
+
+  /* laden */
+  .skeleton { display: grid; gap: var(--s3); }
+  .skeleton div { height: 120px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); }
+  @media (prefers-reduced-motion: no-preference) {
+    .skeleton div { animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: 0.55; } }
+    .bar span { transition: width 600ms var(--ease-out); }
+    .bot { animation: rise 400ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 60ms); }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  }
+
+  /* welke delen zichtbaar zijn per toestand */
+  .view { display: none; }
+  body[data-state="keys"] .view-keys,
+  body[data-state="loading"] .view-loading,
+  body[data-state="error"] .view-error,
+  body[data-state="ready"] .view-ready { display: block; }
+  body[data-state="ready"] .tiles,
+  body[data-state="loading"] .skeleton { display: grid; }
+  body[data-state="keys"] .tools,
+  body[data-state="keys"] #market,
+  body[data-state="loading"] .tools { visibility: hidden; }
+</style>
+</head>
+<body data-state="loading">
+<main class="wrap">
+  <header class="head">
+    <div class="head-row">
+      <span class="pill">Paper trading, geen echt geld</span>
+      <span class="pill" id="market" data-open="no">Beurs</span>
+    </div>
+    <h1 class="title">Mijn tradingbots</h1>
+    <p class="lede view view-ready">Je bots staan samen op <b id="sum-total">—</b> sinds de start, met <b id="sum-open">—</b> nu in de markt en <b id="sum-trades">—</b> trades in totaal.</p>
+    <div class="tools">
+      <span id="updated">Bijwerken…</span>
+      <button type="button" id="refresh">Ververs</button>
+      <button type="button" id="logout" class="link">Sleutels wissen</button>
+    </div>
+  </header>
+
+  <section class="view view-keys" aria-labelledby="keys-title">
+    <form class="keys" id="key-form" autocomplete="off">
+      <h2 id="keys-title">Koppel je paper account</h2>
+      <p>Vul de API-sleutels van je Alpaca <strong>paper</strong> account in. Je vindt ze in het Alpaca-dashboard onder API Keys.</p>
+      <p class="alert" id="key-error" hidden>Alpaca accepteerde deze sleutels niet. Gebruik je de sleutels van je paper account?</p>
+      <div class="field">
+        <label for="key-id">API Key ID</label>
+        <input id="key-id" name="key-id" placeholder="PK…" spellcheck="false" required>
+      </div>
+      <div class="field">
+        <label for="key-secret">Secret Key</label>
+        <input id="key-secret" name="key-secret" type="password" spellcheck="false" required>
+      </div>
+      <button class="primary" type="submit">Dashboard openen</button>
+      <p class="note">De sleutels worden alleen in deze browser bewaard en gaan nergens anders heen dan naar Alpaca. Dit dashboard leest alleen: het kan niets kopen of verkopen.</p>
+    </form>
+  </section>
+
+  <section class="view view-loading skeleton" aria-label="Laden">
+    <div></div><div></div>
+  </section>
+
+  <section class="view view-error" aria-live="polite">
+    <div class="keys">
+      <h2>Er ging iets mis</h2>
+      <p id="error-text">Alpaca reageerde niet.</p>
+      <button type="button" id="retry" class="primary">Opnieuw proberen</button>
+    </div>
+  </section>
+
+  <section class="view view-ready tiles" aria-label="Account">
+    <div class="tile"><span class="label">Accountwaarde</span><span class="num-xl" id="acct-value">—</span><span class="small muted">Al het nepgeld bij Alpaca</span></div>
+    <div class="tile"><span class="label">Vandaag</span><span class="num-xl" id="acct-today">—</span><span class="small muted">Verschil met slot van gisteren</span></div>
+    <div class="tile"><span class="label">Gerealiseerd</span><span class="num-xl" id="sum-realized">—</span><span class="small muted">Van gesloten trades van je bots</span></div>
+  </section>
+
+  <section class="view view-ready" aria-labelledby="bots-title" id="bots">
+    <h2 id="bots-title">Bots</h2>
+    <div class="bots" id="bot-list"></div>
+  </section>
+
+  <section class="view view-ready" aria-labelledby="trades-title" id="trades">
+    <h2 id="trades-title">Laatste trades</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Tijd</th><th>Bot</th><th>Aandeel</th><th>Actie</th><th>Soort</th><th class="num">Aantal</th><th class="num">Prijs</th><th class="num">Waarde</th></tr>
+        </thead>
+        <tbody id="trade-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <details class="add" id="nieuwe-bot">
+    <summary>Een nieuwe bot toevoegen</summary>
+    <p>Open Claude met deze repo en vraag bijvoorbeeld: "maak een nieuwe bot die koopt bij een dip in AAPL". Claude:</p>
+    <ol>
+      <li>maakt een map <code>bots/&lt;naam&gt;</code> met het script en de start- en stopscripts,</li>
+      <li>kiest aandelen die nog geen andere bot gebruikt, zodat elke trade bij de juiste bot hoort,</li>
+      <li>zet de bot in <code>docs/bots.js</code>, waarna hij hier vanzelf verschijnt.</li>
+    </ol>
+  </details>
+</main>
+<script src="bots.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
