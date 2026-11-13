@@ -8,6 +8,8 @@
   var REFRESH_MS = 60000;
 
   // ---------- Rekenwerk (los van de pagina, zodat het te testen is) ----------
+  // Alpaca schrijft crypto als 'BTC/USD' bij orders en 'BTCUSD' bij posities: gelijk trekken.
+  function norm(sym) { return String(sym || '').replace('/', '').toUpperCase(); }
   function flattenOrders(orders) {
     var rows = [];
     orders.forEach(function (o) {
@@ -33,7 +35,7 @@
   function perSymbol(fillRows) {
     var per = {};
     fillRows.forEach(function (f) {
-      var s = per[f.symbol] || (per[f.symbol] = { qty: 0, cost: 0, realized: 0, trip: 0, trips: 0, wins: 0, entries: 0, last: null });
+      var s = per[norm(f.symbol)] || (per[norm(f.symbol)] = { qty: 0, cost: 0, realized: 0, trip: 0, trips: 0, wins: 0, entries: 0, last: null });
       s.last = f.filled_at;
       if (f.side === 'buy') {
         if (s.qty < 1e-9) s.entries++;
@@ -56,12 +58,12 @@
     return bots.map(function (b) {
       var t = { realized: 0, unrealized: 0, value: 0, invested: 0, trips: 0, wins: 0, entries: 0, last: null };
       b.symbols.forEach(function (sym) {
-        var s = per[sym];
+        var s = per[norm(sym)];
         if (s) {
           t.realized += s.realized; t.trips += s.trips; t.wins += s.wins; t.entries += s.entries;
           if (s.last && (!t.last || s.last > t.last)) t.last = s.last;
         }
-        positions.filter(function (p) { return p.symbol === sym; }).forEach(function (p) {
+        positions.filter(function (p) { return norm(p.symbol) === norm(sym); }).forEach(function (p) {
           t.unrealized += Number(p.unrealized_pl); t.value += Number(p.market_value); t.invested += Number(p.cost_basis);
         });
       });
@@ -75,7 +77,7 @@
 
   function recentTrades(bots, orderRows, n) {
     function botOf(sym) {
-      for (var i = 0; i < bots.length; i++) if (bots[i].symbols.indexOf(sym) >= 0) return bots[i];
+      for (var i = 0; i < bots.length; i++) if (bots[i].symbols.map(norm).indexOf(norm(sym)) >= 0) return bots[i];
       return null;
     }
     return fills(orderRows).reverse().slice(0, n).map(function (f) {
@@ -227,7 +229,7 @@
       requestAnimationFrame(function () { fill.style.width = pct + '%'; });
 
       var meta = el('p', 'bot-meta muted small');
-      meta.textContent = 'Aandelen: ' + b.symbols.join(', ') + '. Draait ' + b.schedule + '.' +
+      meta.textContent = 'Handelt in: ' + b.symbols.join(', ') + '. Draait ' + b.schedule + '.' +
         (s.last ? ' Laatste trade: ' + timeFmt.format(new Date(s.last)) + '.' : '');
       card.append(meta);
       wrap.append(card);

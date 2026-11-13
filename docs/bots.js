@@ -37,5 +37,23 @@ window.BOTS = [
     color: '#0E9F8E',
     strategy: 'Koopt na een flinke dip (RSI-2 onder 10) als de trend omhoog is, en verkoopt bij herstel, 5% verlies of na 10 dagen.',
     schedule: 'elke werkdag om 20:45 en 21:45'
+  },
+  {
+    name: 'Sector-rotatie',
+    folder: 'bots/sectorrotatie',
+    symbols: ['XLK', 'XLE', 'XLF', 'XLV', 'XLI', 'XLY', 'XLP', 'XLU', 'XLB', 'XLRE', 'XLC'],
+    budget: 1000,
+    color: '#9C4DCC',
+    strategy: 'Zet 1x per maand het geld in de 2 sectoren die de afgelopen 3 maanden het hardst stegen (alleen als ze echt stegen).',
+    schedule: 'elke werkdag om 15:45, wisselt 1x per maand'
+  },
+  {
+    name: 'Crypto-trend',
+    folder: 'bots/cryptotrend',
+    symbols: ['BTC/USD'],
+    budget: 1000,
+    color: '#D99A00',
+    strategy: 'Houdt bitcoin vast als de koers duidelijk boven het 50-daags gemiddelde staat, anders cash.',
+    schedule: 'elke dag om 12:17, ook in het weekend'
   }
 ];
