@@ -106,6 +106,34 @@
   .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s4); display: grid; gap: var(--s1); box-shadow: var(--shadow); }
   .tile .label { font-size: var(--text-sm); color: var(--muted); }
 
+  /* resultaat + grafiek */
+  .result { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s4); box-shadow: var(--shadow); }
+  body[data-state="ready"] section.result { display: grid; gap: var(--s4); }
+  .result h2 { margin: 0 0 var(--s1); }
+  .result p { margin: 0; }
+  .result-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: var(--s3); }
+  .result-acct { display: grid; }
+  @media (min-width: 600px) { .result-acct { text-align: right; } }
+  .num-lg { font-family: var(--font-num); font-weight: 600; font-size: var(--text-lg); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .periods { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(118px, 1fr); gap: var(--s2); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 2px; }
+  .period { scroll-snap-align: start; display: grid; gap: 2px; text-align: left; border-radius: 12px; padding: 12px 14px; min-height: 64px; background: var(--bg); }
+  .period-label { font-size: var(--text-sm); color: var(--muted); font-weight: 500; }
+  .period-value { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--text); }
+  .period[aria-pressed="true"] { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 8%, var(--surface)); box-shadow: inset 0 0 0 1px var(--ink); }
+  .period:active { transform: none; }
+  .chart { position: relative; height: 240px; }
+  @media (min-width: 760px) { .chart { height: 300px; } }
+  .chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .chart .axis text { fill: var(--muted); font-size: 11px; font-family: var(--font-ui); font-variant-numeric: tabular-nums; }
+  .chart .grid line { stroke: var(--line); }
+  .chart .base { stroke: var(--muted); stroke-dasharray: 3 4; opacity: 0.7; }
+  .chart-empty { position: absolute; inset: 0; display: grid; place-items: center; }
+  .chart-empty[hidden] { display: none; }
+  .tip { position: absolute; top: 0; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: var(--text-sm); box-shadow: 0 8px 24px -12px rgba(0,0,0,.35); white-space: nowrap; transform: translateX(-50%); }
+  .tip b { display: block; font-variant-numeric: tabular-nums; }
+  .chart-foot b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .chart-foot b.is-pos { color: var(--pos); } .chart-foot b.is-neg { color: var(--neg); }
+
   /* beurstijden */
   .market { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s4); box-shadow: var(--shadow); }
   body[data-state="ready"] section.market { display: grid; gap: var(--s4); }
@@ -251,10 +279,28 @@
     </div>
   </section>
 
-  <section class="view view-ready tiles" aria-label="Account">
-    <div class="tile"><span class="label">Accountwaarde</span><span class="num-xl" id="acct-value">—</span><span class="small muted">Al het nepgeld bij Alpaca</span></div>
-    <div class="tile"><span class="label">Vandaag</span><span class="num-xl" id="acct-today">—</span><span class="small muted">Verschil met slot van gisteren</span></div>
-    <div class="tile"><span class="label">Gerealiseerd</span><span class="num-xl" id="sum-realized">—</span><span class="small muted">Van gesloten trades van je bots</span></div>
+  <section class="view view-ready result" aria-labelledby="result-title" id="resultaat">
+    <div class="result-head">
+      <div>
+        <h2 id="result-title">Resultaat</h2>
+        <p class="small muted">Hoeveel je account won of verloor in de gekozen periode. Kies een periode om de grafiek te wisselen.</p>
+      </div>
+      <div class="result-acct">
+        <span class="small muted">Accountwaarde</span>
+        <span class="num-lg" id="acct-value">—</span>
+      </div>
+    </div>
+    <div class="periods" role="group" aria-label="Periode">
+      <button type="button" class="period" data-period="24u" aria-pressed="false"><span class="period-label">24 uur</span><span class="period-value" data-change="24u">—</span></button>
+      <button type="button" class="period" data-period="7d" aria-pressed="false"><span class="period-label">7 dagen</span><span class="period-value" data-change="7d">—</span></button>
+      <button type="button" class="period" data-period="30d" aria-pressed="false"><span class="period-label">30 dagen</span><span class="period-value" data-change="30d">—</span></button>
+      <button type="button" class="period" data-period="1j" aria-pressed="false"><span class="period-label">1 jaar</span><span class="period-value" data-change="1j">—</span></button>
+      <button type="button" class="period" data-period="alles" aria-pressed="false"><span class="period-label">Alles</span><span class="period-value" data-change="alles">—</span></button>
+    </div>
+    <div class="chart" id="chart">
+      <p class="chart-empty muted small" id="chart-empty" hidden>Nog niet genoeg gegevens voor deze periode.</p>
+    </div>
+    <p class="small muted chart-foot">Gerealiseerd met gesloten trades van je bots: <b id="sum-realized">—</b></p>
   </section>
 
   <section class="view view-ready market" aria-labelledby="mkt-title" id="beurs">

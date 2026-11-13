@@ -110,8 +110,28 @@
     return y + ' jaar' + (m ? ' en ' + m + (m === 1 ? ' maand' : ' maanden') : '');
   }
 
+  // Portfoliogeschiedenis van Alpaca -> [{t, v}] zonder lege dagen (voor het account bestond),
+  // met de huidige waarde als laatste punt zodat de grafiek altijd tot nu loopt.
+  function cleanHistory(h, nowValue, nowMs) {
+    var out = [];
+    (h && h.timestamp || []).forEach(function (ts, i) {
+      var v = h.equity[i];
+      if (v !== null && v > 0) out.push({ t: ts * 1000, v: v });
+    });
+    if (nowValue > 0) {
+      var t = nowMs || Date.now();
+      if (out.length && t - out[out.length - 1].t < 60000) out[out.length - 1] = { t: t, v: nowValue };
+      else out.push({ t: t, v: nowValue });
+    }
+    return out;
+  }
+  function change(series) {
+    if (series.length < 2) return 0;
+    return r2(series[series.length - 1].v - series[0].v);
+  }
+
   if (typeof module !== 'undefined') {
-    module.exports = { flattenOrders: flattenOrders, botStats: botStats, recentTrades: recentTrades, firstFill: firstFill, age: age };
+    module.exports = { flattenOrders: flattenOrders, botStats: botStats, recentTrades: recentTrades, firstFill: firstFill, age: age, cleanHistory: cleanHistory, change: change };
     return;
   }
 
@@ -143,6 +163,44 @@
       });
     }
     return page(null, 1);
+  }
+
+  // ---------- Periodes ----------
+  var PERIODS = {
+    '24u': { label: '24 uur', ms: 864e5, timeframe: '15Min' },
+    '7d': { label: '7 dagen', ms: 7 * 864e5, timeframe: '1H' },
+    '30d': { label: '30 dagen', ms: 30 * 864e5, timeframe: '1H' },
+    '1j': { label: '1 jaar', period: '1A', timeframe: '1D' },
+    'alles': { label: 'Alles' }
+  };
+  var PERIOD_KEY = 'cab-period';
+  var selected = (function () { try { return localStorage.getItem(PERIOD_KEY) || '7d'; } catch (e) { return '7d'; } })();
+  var histories = {};
+
+  function historyQuery(key, firstIso) {
+    var p = PERIODS[key], now = Date.now();
+    if (key === 'alles') {
+      var from = firstIso ? new Date(firstIso).getTime() - 864e5 : now - 365 * 864e5;
+      p = now - from <= 29 * 864e5 ? { ms: now - from, timeframe: '1H' } : { start: from, timeframe: '1D' };
+    }
+    if (p.period) return 'period=' + p.period + '&timeframe=' + p.timeframe;
+    var start = new Date(p.start || now - p.ms).toISOString().replace(/\.\d+Z$/, 'Z');
+    var q = 'start=' + encodeURIComponent(start) + '&timeframe=' + p.timeframe;
+    if (p.timeframe !== '1D') q += '&intraday_reporting=continuous&pnl_reset=no_reset';
+    return q;
+  }
+
+  function allHistories(keys, firstIso, nowValue) {
+    var names = Object.keys(PERIODS);
+    return Promise.all(names.map(function (k) {
+      return get('/v2/account/portfolio/history?' + historyQuery(k, firstIso), keys)
+        .then(function (h) { return cleanHistory(h, nowValue); })
+        .catch(function () { return null; });
+    })).then(function (list) {
+      var out = {};
+      names.forEach(function (k, i) { out[k] = list[i]; });
+      return out;
+    });
   }
 
   // ---------- Opmaak ----------
@@ -248,6 +306,136 @@
     document.body.dataset.state = state; // 'keys' | 'loading' | 'ready' | 'error'
   }
 
+  var axisFmt = {
+    '24u': new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit' }),
+    '7d': new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric' }),
+    '30d': new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }),
+    '1j': new Intl.DateTimeFormat('nl-NL', { month: 'short', year: '2-digit' }),
+    'alles': new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' })
+  };
+  var tipFmt = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  var tipDayFmt = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+  function renderPeriods() {
+    Object.keys(PERIODS).forEach(function (k) {
+      var node = document.querySelector('[data-change="' + k + '"]');
+      var series = histories[k];
+      if (!series) { node.textContent = '—'; node.classList.remove('is-pos', 'is-neg'); return; }
+      var c = change(series);
+      node.textContent = signed.format(c);
+      tone(node, c);
+    });
+    document.querySelectorAll('.period').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.period === selected ? 'true' : 'false');
+    });
+    drawChart();
+  }
+
+  var SVG = 'http://www.w3.org/2000/svg';
+  function svgEl(tag, attrs) {
+    var n = document.createElementNS(SVG, tag);
+    Object.keys(attrs || {}).forEach(function (a) { n.setAttribute(a, attrs[a]); });
+    return n;
+  }
+
+  function drawChart() {
+    var box = $('#chart');
+    var series = histories[selected] || [];
+    box.querySelectorAll('svg, .tip').forEach(function (n) { n.remove(); });
+    var empty = $('#chart-empty');
+    if (series.length < 2) { empty.hidden = false; return; }
+    empty.hidden = true;
+
+    var W = box.clientWidth, H = box.clientHeight;
+    var styles = getComputedStyle(document.documentElement);
+    var c = change(series);
+    var color = c < 0 ? styles.getPropertyValue('--neg').trim() : c > 0 ? styles.getPropertyValue('--pos').trim() : styles.getPropertyValue('--ink').trim();
+    var base = series[0].v;
+    var vals = series.map(function (p) { return p.v; });
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    var pad = Math.max((hi - lo) * 0.15, 1);
+    lo -= pad; hi += pad;
+
+    // marge links op basis van de breedste y-label
+    var yTicks = [];
+    for (var i = 0; i <= 3; i++) yTicks.push(lo + (hi - lo) * i / 3);
+    var probe = svgEl('svg', { width: 0, height: 0 }); probe.classList.add('axis'); box.append(probe);
+    var tw = 0;
+    yTicks.forEach(function (v) { var t = svgEl('text'); t.textContent = usd.format(v); probe.append(t); tw = Math.max(tw, t.getComputedTextLength()); });
+    probe.remove();
+    var m = { l: Math.ceil(tw) + 10, r: 8, t: 10, b: 24 };
+    var iw = Math.max(10, W - m.l - m.r), ih = Math.max(10, H - m.t - m.b);
+    var t0 = series[0].t, t1 = series[series.length - 1].t;
+    function x(t) { return m.l + (t1 === t0 ? 0 : (t - t0) / (t1 - t0) * iw); }
+    function y(v) { return m.t + (hi - v) / (hi - lo) * ih; }
+
+    var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img',
+      'aria-label': 'Accountwaarde over ' + PERIODS[selected].label + ': van ' + usd.format(series[0].v) + ' naar ' + usd.format(series[series.length - 1].v) });
+    var defs = svgEl('defs'), grad = svgEl('linearGradient', { id: 'fill', x1: 0, y1: 0, x2: 0, y2: 1 });
+    grad.append(svgEl('stop', { offset: '0%', 'stop-color': color, 'stop-opacity': 0.22 }), svgEl('stop', { offset: '100%', 'stop-color': color, 'stop-opacity': 0 }));
+    defs.append(grad); svg.append(defs);
+
+    var grid = svgEl('g', { 'class': 'grid' }), axis = svgEl('g', { 'class': 'axis' });
+    yTicks.forEach(function (v) {
+      grid.append(svgEl('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v) }));
+      var t = svgEl('text', { x: m.l - 8, y: y(v) + 4, 'text-anchor': 'end' }); t.textContent = usd.format(v); axis.append(t);
+    });
+    // x-labels: begin, midden, eind (zonder overlap)
+    var xf = axisFmt[selected];
+    [0, 0.5, 1].forEach(function (f, idx) {
+      var tt = t0 + (t1 - t0) * f;
+      var t = svgEl('text', { x: x(tt), y: H - 6, 'text-anchor': idx === 0 ? 'start' : idx === 2 ? 'end' : 'middle' });
+      t.textContent = xf.format(new Date(tt)); axis.append(t);
+    });
+    svg.append(grid, axis);
+    svg.append(svgEl('line', { 'class': 'base', x1: m.l, x2: W - m.r, y1: y(base), y2: y(base) }));
+
+    var d = series.map(function (p, i) { return (i ? 'L' : 'M') + x(p.t).toFixed(1) + ' ' + y(p.v).toFixed(1); }).join(' ');
+    svg.append(svgEl('path', { d: d + ' L' + x(t1).toFixed(1) + ' ' + (m.t + ih) + ' L' + x(t0).toFixed(1) + ' ' + (m.t + ih) + ' Z', fill: 'url(#fill)' }));
+    var line = svgEl('path', { d: d, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+    svg.append(line);
+
+    var cross = svgEl('line', { y1: m.t, y2: m.t + ih, stroke: 'currentColor', 'stroke-opacity': 0.25, visibility: 'hidden' });
+    var dot = svgEl('circle', { r: 4.5, fill: color, stroke: 'var(--surface)', 'stroke-width': 2, visibility: 'hidden' });
+    svg.append(cross, dot);
+    box.append(svg);
+
+    var tip = el('div', 'tip'); tip.hidden = true; box.append(tip);
+    var daily = selected === '1j' || (selected === 'alles' && t1 - t0 > 29 * 864e5);
+    function show(clientX) {
+      var r = svg.getBoundingClientRect();
+      var px = (clientX - r.left) / r.width * W;
+      var tt = t0 + Math.min(1, Math.max(0, (px - m.l) / iw)) * (t1 - t0);
+      var best = series[0];
+      series.forEach(function (p) { if (Math.abs(p.t - tt) < Math.abs(best.t - tt)) best = p; });
+      var cx = x(best.t), cy = y(best.v);
+      cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
+      dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
+      tip.replaceChildren();
+      var diff = r2(best.v - base);
+      var head = el('span', 'muted', (daily ? tipDayFmt : tipFmt).format(new Date(best.t)));
+      var val = el('b', null, usd.format(best.v));
+      var ch = el('span', null, signed.format(diff) + ' sinds begin periode'); tone(ch, diff);
+      tip.append(head, val, ch);
+      tip.hidden = false;
+      var left = cx / W * r.width, half = tip.offsetWidth / 2;
+      tip.style.left = Math.min(r.width - half, Math.max(half, left)) + 'px';
+    }
+    function hide() { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.hidden = true; }
+    svg.addEventListener('pointermove', function (e) { show(e.clientX); });
+    svg.addEventListener('pointerdown', function (e) { show(e.clientX); });
+    svg.addEventListener('pointerleave', hide);
+
+    if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches && !drawChart.done) {
+      var len = line.getTotalLength();
+      line.style.strokeDasharray = len; line.style.strokeDashoffset = len;
+      line.getBoundingClientRect();
+      line.style.transition = 'stroke-dashoffset 700ms cubic-bezier(0, 0, 0.2, 1)';
+      line.style.strokeDashoffset = 0;
+      drawChart.done = true;
+    }
+  }
+
   var longDate = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
   function renderSince(first) {
     var since = $('#sum-since'), dur = $('#sum-age');
@@ -265,7 +453,6 @@
     setMoney('#sum-open', open, false);
     $('#sum-trades').textContent = String(trades);
     setMoney('#acct-value', Number(account.portfolio_value), false);
-    setMoney('#acct-today', r2(Number(account.equity) - Number(account.last_equity)), true);
     setMoney('#sum-realized', realized, true);
   }
 
@@ -380,6 +567,11 @@
         renderTrades(recentTrades(bots, rows, 30));
         $('#updated').textContent = 'Bijgewerkt om ' + new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
         show('ready');
+        // grafiekdata pas na het tonen ophalen, zodat de pagina niet hoeft te wachten
+        return allHistories(keys, firstFill(bots, rows), Number(r[0].equity)).then(function (h) {
+          histories = h;
+          renderPeriods();
+        });
       })
       .catch(function (e) {
         if (e.auth) {
@@ -410,6 +602,15 @@
       load(true);
     });
     $('#refresh').addEventListener('click', function () { load(false); });
+    document.querySelectorAll('.period').forEach(function (b) {
+      b.addEventListener('click', function () {
+        selected = b.dataset.period;
+        try { localStorage.setItem(PERIOD_KEY, selected); } catch (e) { /* niets */ }
+        renderPeriods();
+      });
+    });
+    var rt = null;
+    window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(drawChart, 150); });
     $('#retry').addEventListener('click', function () { load(true); });
     $('#logout').addEventListener('click', function () { clearKeys(); show('keys'); });
     load(true);
