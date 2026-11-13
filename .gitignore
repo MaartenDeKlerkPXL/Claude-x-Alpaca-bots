@@ -6,5 +6,6 @@ keys.env
 *.log
 trades_log.csv
 scalp_log.csv
+*_log.csv
 __pycache__/
 .DS_Store

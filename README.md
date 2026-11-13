@@ -10,6 +10,8 @@ Simpele tradingbots voor een **Alpaca paper account** (nepgeld), gemaakt samen m
 |---|---|
 | `bots/trendbot/` | Koopt SPY en QQQ als de koers boven het 200-daags gemiddelde staat, verkoopt eronder. Draait elk uur. |
 | `bots/scalper/` | Koopt korte oplevingen in IWM met winst-order (+0,20%) en stop-loss (-0,15%). Draait doorlopend tijdens de beurs. |
+| `bots/benchmark/` | De meetlat: koopt 1 keer voor $1.000 VOO (S&P 500) en houdt dat vast. |
+| `bots/dipkoper/` | Koopt DIA na een flinke dip als de trend omhoog is, verkoopt bij herstel, 5% verlies of na 10 dagen. |
 | `docs/` | Het dashboard (GitHub Pages). De botlijst staat in `docs/bots.js`. |
 | `setup.sh` | Slaat je API-sleutels op in `keys.env` (komt nooit op GitHub). |
 
@@ -21,9 +23,11 @@ cd Claude-x-Alpaca-bots
 ./setup.sh                          # sleutels van je PAPER account invullen
 bots/trendbot/schedule_on.sh        # trendbot elk uur automatisch
 bots/scalper/scalp_on.sh            # scalper elke werkdag vanaf 15:35
+bots/benchmark/schedule_on.sh       # meetlat: koopt 1 keer VOO
+bots/dipkoper/schedule_on.sh        # dip-koper: elke werkdag vlak voor sluiting
 ```
 
-Uitzetten kan met `bots/trendbot/schedule_off.sh` en `bots/scalper/scalp_off.sh`. Je Mac moet tijdens de beurs (15:30 tot 22:00) aanstaan.
+Uitzetten kan per bot met het `schedule_off.sh`- of `scalp_off.sh`-script in zijn map. Je Mac moet tijdens de beurs (15:30 tot 22:00) aanstaan.
 
 ## Dashboard
 
