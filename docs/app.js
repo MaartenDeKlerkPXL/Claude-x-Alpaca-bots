@@ -44,6 +44,7 @@
         var avg = s.qty > 0 ? s.cost / s.qty : f.price;
         var sold = Math.min(f.filled_qty, s.qty);
         var pnl = (f.price - avg) * sold;
+        f.pnl = pnl; f.pnlPct = avg ? (f.price - avg) / avg : 0;
         s.realized += pnl; s.trip += pnl; s.cost -= avg * sold; s.qty -= sold;
         if (s.qty < 1e-6) { s.trips++; if (s.trip > 0) s.wins++; s.trip = 0; s.qty = 0; s.cost = 0; }
       }
@@ -70,6 +71,10 @@
       return {
         bot: b, realized: r2(t.realized), unrealized: r2(t.unrealized), total: r2(t.realized + t.unrealized),
         value: r2(t.value), invested: r2(t.invested), trades: t.entries, closed: t.trips, wins: t.wins,
+        totalPct: b.budget ? (t.realized + t.unrealized) / b.budget : null,
+        realizedPct: b.budget ? t.realized / b.budget : null,
+        openPct: t.invested ? t.unrealized / t.invested : null,
+        investedPct: b.budget ? t.invested / b.budget : null,
         winrate: t.trips ? Math.round((t.wins / t.trips) * 100) : null, inPosition: t.value > 0, last: t.last
       };
     });
@@ -80,11 +85,14 @@
       for (var i = 0; i < bots.length; i++) if (bots[i].symbols.map(norm).indexOf(norm(sym)) >= 0) return bots[i];
       return null;
     }
-    return fills(orderRows).reverse().slice(0, n).map(function (f) {
+    var all = fills(orderRows);
+    perSymbol(all);
+    return all.slice().reverse().slice(0, n).map(function (f) {
       return {
         time: f.filled_at, bot: botOf(f.symbol), symbol: f.symbol, side: f.side,
         kind: f.role === 'take_profit' ? 'Winst nemen' : f.role === 'stop_loss' ? 'Stop-loss' : f.type === 'market' ? 'Markt' : f.type,
-        qty: f.filled_qty, price: f.price, value: r2(f.filled_qty * f.price)
+        qty: f.filled_qty, price: f.price, value: r2(f.filled_qty * f.price),
+        pnl: f.pnl === undefined ? null : r2(f.pnl), pnlPct: f.pnlPct === undefined ? null : f.pnlPct
       };
     });
   }
@@ -227,10 +235,25 @@
     node.classList.toggle('is-pos', v > 0);
     node.classList.toggle('is-neg', v < 0);
   }
-  function setMoney(sel, v, isSigned) {
-    var n = $(sel);
-    n.textContent = (isSigned ? signed : usd).format(v);
-    if (isSigned) tone(n, v);
+  var pctSigned = new Intl.NumberFormat('nl-NL', { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'exceptZero' });
+  var pctShare = new Intl.NumberFormat('nl-NL', { style: 'percent', maximumFractionDigits: 0 });
+  // Procent als tekst. Heel kleine bedragen tonen we als '<0,01%' in plaats van een misleidende 0,00%.
+  var pctSmall = new Intl.NumberFormat('nl-NL', { style: 'percent', minimumFractionDigits: 3, maximumFractionDigits: 3, signDisplay: 'exceptZero' });
+  function pct(p) {
+    if (p === null || p === undefined || !isFinite(p) || p === 0) return '';
+    return (Math.abs(p) < 0.00005 ? pctSmall : pctSigned).format(p);
+  }
+  function totalBudget() {
+    return (window.BOTS || []).reduce(function (t, b) { return t + (b.budget || 0); }, 0);
+  }
+  // Zet een bedrag met daarachter (kleiner) het procent in een element.
+  function putMoney(node, v, isSigned, pctText) {
+    node.replaceChildren(document.createTextNode((isSigned ? signed : usd).format(v)));
+    if (pctText) node.append(el('span', 'pct', ' (' + pctText + ')'));
+    if (isSigned) tone(node, v);
+  }
+  function setMoney(sel, v, isSigned, pctText) {
+    putMoney($(sel), v, isSigned, pctText);
   }
 
   // ---------- Beurstijden ----------
@@ -328,9 +351,13 @@
       var series = histories[k];
       if (!series) { node.textContent = '—'; node.classList.remove('is-pos', 'is-neg'); return; }
       var c = change(series);
-      node.textContent = signed.format(c);
-      tone(node, c);
+      putMoney(node, c, true, pct(c / totalBudget()));
     });
+    var all = histories.alles;
+    if (all && all.length) {
+      var now = all[all.length - 1].v, start = all[0].v;
+      setMoney('#acct-value', now, false, pct((now - start) / start));
+    }
     document.querySelectorAll('.period').forEach(function (b) {
       b.setAttribute('aria-pressed', b.dataset.period === selected ? 'true' : 'false');
     });
@@ -421,7 +448,7 @@
       var diff = r2(best.v - base);
       var head = el('span', 'muted', (daily ? tipDayFmt : tipFmt).format(new Date(best.t)));
       var val = el('b', null, usd.format(best.v));
-      var ch = el('span', null, signed.format(diff) + ' sinds begin periode'); tone(ch, diff);
+      var ch = el('span', null, signed.format(diff) + ' (' + pct(diff / totalBudget()) + ') sinds begin periode'); tone(ch, diff);
       tip.append(head, val, ch);
       tip.hidden = false;
       var left = cx / W * r.width, half = tip.offsetWidth / 2;
@@ -455,11 +482,12 @@
     var realized = r2(stats.reduce(function (t, s) { return t + s.realized; }, 0));
     var open = r2(stats.reduce(function (t, s) { return t + s.value; }, 0));
     var trades = stats.reduce(function (t, s) { return t + s.trades; }, 0);
-    setMoney('#sum-total', total, true);
-    setMoney('#sum-open', open, false);
+    var tb = totalBudget();
+    setMoney('#sum-total', total, true, tb ? pct(total / tb) : '');
+    setMoney('#sum-open', open, false, tb ? pctShare.format(open / tb) + ' van je budget' : '');
     $('#sum-trades').textContent = String(trades);
     setMoney('#acct-value', Number(account.portfolio_value), false);
-    setMoney('#sum-realized', realized, true);
+    setMoney('#sum-realized', realized, true, tb ? pct(realized / tb) : '');
   }
 
   function renderBots(stats) {
@@ -485,35 +513,36 @@
       card.append(el('p', 'bot-desc', b.strategy));
 
       var res = el('div', 'bot-result');
-      var big = el('span', 'num-xl', signed.format(s.total));
-      tone(big, s.total);
-      res.append(big, el('span', 'muted small', 'resultaat sinds de start'));
+      var big = el('span', 'num-xl');
+      putMoney(big, s.total, true, pct(s.totalPct));
+      res.append(big, el('span', 'muted small', 'resultaat sinds de start, in % van het budget'));
       card.append(res);
 
       var dl = el('dl', 'stats');
-      function stat(label, value, v) {
+      function stat(label, value, v, pctText) {
         var w = el('div');
         var dd = el('dd', null, value);
+        if (pctText) dd.append(el('span', 'pct', ' (' + pctText + ')'));
         if (v !== undefined) tone(dd, v);
         w.append(el('dt', null, label), dd);
         dl.append(w);
       }
-      stat('Open positie', usd.format(s.value));
-      stat('Gerealiseerd', signed.format(s.realized), s.realized);
+      stat('Open positie', usd.format(s.value), s.value ? s.value - s.invested : undefined, s.value ? pct(s.openPct) : '');
+      stat('Gerealiseerd', signed.format(s.realized), s.realized, pct(s.realizedPct));
       stat('Trades', String(s.trades));
       stat('Winrate', s.winrate === null ? 'nog geen' : s.winrate + '% (' + s.wins + '/' + s.closed + ')');
       card.append(dl);
 
-      var pct = b.budget ? Math.min(100, (s.invested / b.budget) * 100) : 0;
+      var barPct = b.budget ? Math.min(100, (s.invested / b.budget) * 100) : 0;
       var bud = el('div', 'budget');
       var bar = el('div', 'bar');
       bar.setAttribute('role', 'img');
-      bar.setAttribute('aria-label', Math.round(pct) + '% van het budget zit in de markt');
+      bar.setAttribute('aria-label', Math.round(barPct) + '% van het budget zit in de markt');
       var fill = el('span');
       bar.append(fill);
-      bud.append(bar, el('span', 'muted small', usd.format(s.invested) + ' van ' + usd.format(b.budget) + ' budget in de markt'));
+      bud.append(bar, el('span', 'muted small', usd.format(s.invested) + ' van ' + usd.format(b.budget) + ' budget in de markt (' + pctShare.format(s.investedPct || 0) + ')'));
       card.append(bud);
-      requestAnimationFrame(function () { fill.style.width = pct + '%'; });
+      requestAnimationFrame(function () { fill.style.width = barPct + '%'; });
 
       var meta = el('p', 'bot-meta muted small');
       meta.textContent = 'Handelt in: ' + b.symbols.join(', ') + '. Draait ' + b.schedule + '.' +
@@ -545,7 +574,13 @@
       tr.append(el('td', null, t.kind));
       tr.append(el('td', 'num', qtyFmt.format(t.qty)));
       tr.append(el('td', 'num', usd.format(t.price)));
-      tr.append(el('td', 'num', usd.format(t.value)));
+      var vtd = el('td', 'num', usd.format(t.value));
+      if (t.pnl !== null) {
+        var res = el('span', 'pct', ' ' + signed.format(t.pnl) + ' (' + pct(t.pnlPct) + ')');
+        tone(res, t.pnl);
+        vtd.append(el('br'), res);
+      }
+      tr.append(vtd);
       body.append(tr);
     });
   }
