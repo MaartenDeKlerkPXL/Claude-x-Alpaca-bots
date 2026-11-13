@@ -25,3 +25,7 @@ Maarten bouwt hier samen met Claude simpele tradingbots voor een Alpaca **paper*
 ## Dashboard
 
 `docs/index.html` + `docs/app.js` leest via de Alpaca REST API (alleen GET) account, posities, orders en klok. Rekenwerk staat in `app.js` (`botStats`, `recentTrades`) en is in Node te testen via `module.exports`.
+
+## Analyse
+
+Vraagt Maarten om een analyse van de bots, of draait de maandelijkse geplande taak: volg `ANALYSE.md`. Rapporten komen in `rapporten/`, verbeteringen altijd via een pull request.
