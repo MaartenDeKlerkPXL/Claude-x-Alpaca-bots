@@ -148,18 +148,83 @@
     if (isSigned) tone(n, v);
   }
 
+  // ---------- Beurstijden ----------
+  // De kalender van Alpaca geeft tijden in New Yorkse tijd; omrekenen naar de tijd van de lezer.
+  function nyToDate(dateStr, hm) {
+    var d = dateStr.split('-').map(Number), t = hm.split(':').map(Number);
+    var guess = Date.UTC(d[0], d[1] - 1, d[2], t[0], t[1]);
+    var parts = {};
+    new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      .formatToParts(new Date(guess)).forEach(function (x) { parts[x.type] = x.value; });
+    var shown = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute);
+    return new Date(guess + (guess - shown));
+  }
+  function nyToday(offsetDays) {
+    var d = new Date(Date.now() + (offsetDays || 0) * 864e5);
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(d);
+  }
+  var hmFmt = new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit' });
+  var dayFmt = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+  function span(ms) {
+    var m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60);
+    return h ? h + ' u ' + (m % 60) + ' min' : m + ' min';
+  }
+  function dayLabel(dateStr) {
+    var today = nyToday(0), tomorrow = nyToday(1);
+    if (dateStr === today) return 'vandaag';
+    if (dateStr === tomorrow) return 'morgen';
+    return dayFmt.format(new Date(dateStr + 'T00:00:00Z'));
+  }
+
+  function renderMarket(calendar, clock) {
+    var now = Date.now();
+    var sessions = calendar.map(function (c) {
+      return { date: c.date, open: nyToDate(c.date, c.open), close: nyToDate(c.date, c.close), short: c.close !== '16:00' };
+    });
+    var cur = sessions.filter(function (s) { return s.close.getTime() > now; })[0];
+    var chip = $('#market');
+    chip.dataset.open = clock.is_open ? 'yes' : 'no';
+    var state = $('#mkt-state'), line = $('#mkt-line');
+    if (!cur) { state.textContent = clock.is_open ? 'Open' : 'Dicht'; line.textContent = ''; chip.textContent = 'Beurs ' + state.textContent.toLowerCase(); return; }
+    var range = hmFmt.format(cur.open) + ' tot ' + hmFmt.format(cur.close);
+    if (clock.is_open) {
+      state.textContent = 'Open';
+      line.textContent = 'Vandaag van ' + range + '. Sluit over ' + span(cur.close - now) + '.';
+      chip.textContent = 'Beurs open tot ' + hmFmt.format(cur.close);
+    } else {
+      state.textContent = 'Dicht';
+      line.textContent = 'Opent ' + dayLabel(cur.date) + ' om ' + hmFmt.format(cur.open) + ' (over ' + span(cur.open - now) + ') en is dan open tot ' + hmFmt.format(cur.close) + '.';
+      chip.textContent = 'Beurs dicht, opent ' + dayLabel(cur.date) + ' ' + hmFmt.format(cur.open);
+    }
+    state.dataset.open = clock.is_open ? 'yes' : 'no';
+
+    // komende handelsdagen, inclusief feestdagen (doordeweekse dagen die niet in de kalender staan)
+    var list = $('#mkt-days');
+    list.replaceChildren();
+    var byDate = {};
+    sessions.forEach(function (s) { byDate[s.date] = s; });
+    var start = new Date(cur.date + 'T00:00:00Z'), shown = 0;
+    for (var i = 0; shown < 5 && i < 14; i++) {
+      var d = new Date(start.getTime() + i * 864e5), key = d.toISOString().slice(0, 10), wd = d.getUTCDay();
+      if (wd === 0 || wd === 6) continue;
+      var li = el('li');
+      li.append(el('span', 'mkt-day', dayLabel(key)));
+      var s = byDate[key];
+      if (s) {
+        li.append(el('span', 'mkt-hours', hmFmt.format(s.open) + ' tot ' + hmFmt.format(s.close)));
+        if (s.short) { li.append(el('span', 'mkt-note', 'korte dag')); }
+      } else {
+        li.className = 'is-closed';
+        li.append(el('span', 'mkt-hours', 'gesloten'), el('span', 'mkt-note', 'feestdag'));
+      }
+      list.append(li);
+      shown++;
+    }
+  }
+
   // ---------- Schermen ----------
   function show(state) {
     document.body.dataset.state = state; // 'keys' | 'loading' | 'ready' | 'error'
-  }
-
-  function renderClock(clock) {
-    var chip = $('#market');
-    var open = clock.is_open;
-    chip.dataset.open = open ? 'yes' : 'no';
-    chip.textContent = open
-      ? 'Beurs open tot ' + clockFmt.format(new Date(clock.next_close)).split(' ').pop()
-      : 'Beurs dicht, opent ' + clockFmt.format(new Date(clock.next_open));
   }
 
   function renderSummary(stats, account) {
@@ -273,12 +338,13 @@
     busy = true;
     if (first) show('loading');
     document.body.classList.add('is-refreshing');
-    Promise.all([get('/v2/account', keys), get('/v2/positions', keys), allOrders(keys), get('/v2/clock', keys)])
+    Promise.all([get('/v2/account', keys), get('/v2/positions', keys), allOrders(keys), get('/v2/clock', keys),
+      get('/v2/calendar?start=' + nyToday(0) + '&end=' + nyToday(14), keys)])
       .then(function (r) {
         var bots = window.BOTS || [];
         var rows = flattenOrders(r[2]);
         var stats = botStats(bots, r[1], rows);
-        renderClock(r[3]);
+        renderMarket(r[4], r[3]);
         renderSummary(stats, r[0]);
         renderBots(stats);
         renderTrades(recentTrades(bots, rows, 30));

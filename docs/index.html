@@ -106,6 +106,24 @@
   .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s4); display: grid; gap: var(--s1); box-shadow: var(--shadow); }
   .tile .label { font-size: var(--text-sm); color: var(--muted); }
 
+  /* beurstijden */
+  .market { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s4); box-shadow: var(--shadow); }
+  body[data-state="ready"] section.market { display: grid; gap: var(--s4); }
+  @media (min-width: 760px) { body[data-state="ready"] section.market { grid-template-columns: 1.2fr 1fr; align-items: start; } }
+  .market h2 { margin: 0 0 var(--s2); }
+  .market p { margin: 0 0 var(--s1); }
+  .market-state { font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.025em; line-height: 1.2; }
+  #mkt-state { display: inline-flex; align-items: center; gap: 10px; }
+  #mkt-state::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); }
+  #mkt-state[data-open="yes"]::before { background: var(--pos); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pos) 22%, transparent); }
+  .market-days { list-style: none; margin: 0; padding: 0; display: grid; font-size: var(--text-sm); }
+  .market-days li { display: grid; grid-template-columns: 7.5em 1fr auto; gap: var(--s2); padding: 10px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .market-days li:last-child { border-bottom: 0; }
+  .mkt-day { color: var(--muted); }
+  .mkt-hours { font-weight: 500; }
+  .mkt-note { color: var(--warn); }
+  .market-days li.is-closed .mkt-hours { color: var(--muted); font-weight: 400; }
+
   /* bots */
   .bots { display: grid; grid-template-columns: 1fr; gap: var(--s3); }
   @media (min-width: 760px) { .bots { grid-template-columns: repeat(2, 1fr); } }
@@ -237,6 +255,16 @@
     <div class="tile"><span class="label">Accountwaarde</span><span class="num-xl" id="acct-value">—</span><span class="small muted">Al het nepgeld bij Alpaca</span></div>
     <div class="tile"><span class="label">Vandaag</span><span class="num-xl" id="acct-today">—</span><span class="small muted">Verschil met slot van gisteren</span></div>
     <div class="tile"><span class="label">Gerealiseerd</span><span class="num-xl" id="sum-realized">—</span><span class="small muted">Van gesloten trades van je bots</span></div>
+  </section>
+
+  <section class="view view-ready market" aria-labelledby="mkt-title" id="beurs">
+    <div class="market-now">
+      <h2 id="mkt-title">Beurs in New York</h2>
+      <p class="market-state"><span id="mkt-state" data-open="no">—</span></p>
+      <p class="muted" id="mkt-line">—</p>
+      <p class="small muted">Tijden in jouw tijdzone.</p>
+    </div>
+    <ol class="market-days" id="mkt-days" aria-label="Komende handelsdagen"></ol>
   </section>
 
   <section class="view view-ready" aria-labelledby="bots-title" id="bots">
