@@ -9,3 +9,6 @@ scalp_log.csv
 *_log.csv
 __pycache__/
 .DS_Store
+
+# Lokale bot-status
+state.json

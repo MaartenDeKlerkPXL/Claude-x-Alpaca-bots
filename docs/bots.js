@@ -73,5 +73,23 @@ window.BOTS = [
     color: '#C2185B',
     strategy: 'Zet 1x per maand alles in de sterkste aandelenmarkt (VS of rest van de wereld), of in obligaties als aandelen het slechter doen dan kasgeld.',
     schedule: 'elke werkdag om 15:52, wisselt hooguit 1x per maand'
+  },
+  {
+    name: 'Hefboom-trend',
+    folder: 'bots/hefboomtrend',
+    symbols: ['TQQQ'],
+    budget: 1000,
+    color: '#E03131',
+    strategy: 'HOOG RISICO: 3x hefboomfonds op de Nasdaq zolang de Nasdaq boven zijn 200-daags gemiddelde staat, met een noodrem bij 25% verlies.',
+    schedule: 'elke werkdag om 20:40 en 21:40'
+  },
+  {
+    name: 'Momentum-jager',
+    folder: 'bots/momentumjager',
+    symbols: ['NVDA', 'AMD', 'AVGO', 'TSLA', 'PLTR', 'COIN', 'MSTR', 'META', 'NFLX', 'SHOP', 'CRWD', 'ANET', 'HOOD', 'APP', 'UBER'],
+    budget: 1000,
+    color: '#F08C00',
+    strategy: 'HOOG RISICO: zet het geld elke week in de 3 snelst stijgende groeiaandelen, met een noodrem per aandeel bij 12% verlies en cash als de hele markt zwak is.',
+    schedule: 'elke werkdag om 15:55, kiest 1x per week opnieuw'
   }
 ];

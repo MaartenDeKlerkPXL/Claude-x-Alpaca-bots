@@ -16,6 +16,8 @@ Simpele tradingbots voor een **Alpaca paper account** (nepgeld), gemaakt samen m
 | `bots/cryptotrend/` | Houdt bitcoin vast boven het 50-daags gemiddelde, anders cash. Draait ook in het weekend. |
 | `bots/cryptomix/` | Vijf soorten coins (ETH, SOL, LINK, AAVE en goud-token PAXG), elk $200 met de 50-daagse trendregel. |
 | `bots/dualmomentum/` | Zet 1x per maand alles in de sterkste aandelenmarkt (VS of wereld), of in obligaties als aandelen slechter doen dan kasgeld. |
+| `bots/hefboomtrend/` | **Hoog risico.** TQQQ (3x Nasdaq) zolang de Nasdaq boven zijn 200-daags gemiddelde staat; noodrem bij 25% verlies. |
+| `bots/momentumjager/` | **Hoog risico.** Elke week de 3 snelste stijgers uit 15 groeiaandelen; noodrem per aandeel bij 12% verlies. |
 | `docs/` | Het dashboard (GitHub Pages). De botlijst staat in `docs/bots.js`. |
 | `setup.sh` | Slaat je API-sleutels op in `keys.env` (komt nooit op GitHub). |
 
@@ -33,6 +35,8 @@ bots/sectorrotatie/schedule_on.sh   # sector-rotatie: wisselt 1x per maand
 bots/cryptotrend/schedule_on.sh     # crypto-trend: elke dag, ook in het weekend
 bots/cryptomix/schedule_on.sh       # crypto-mix: elke dag, ook in het weekend
 bots/dualmomentum/schedule_on.sh    # dual momentum: wisselt hooguit 1x per maand
+bots/hefboomtrend/schedule_on.sh    # hefboom-trend (hoog risico): elke werkdag voor sluiting
+bots/momentumjager/schedule_on.sh   # momentum-jager (hoog risico): kiest 1x per week
 ```
 
 Uitzetten kan per bot met het `schedule_off.sh`- of `scalp_off.sh`-script in zijn map. Je Mac moet tijdens de beurs (15:30 tot 22:00) aanstaan.
