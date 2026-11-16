@@ -55,5 +55,14 @@ window.BOTS = [
     color: '#D99A00',
     strategy: 'Houdt bitcoin vast als de koers duidelijk boven het 50-daags gemiddelde staat, anders cash.',
     schedule: 'elke dag om 12:17, ook in het weekend'
+  },
+  {
+    name: 'Crypto-mix',
+    folder: 'bots/cryptomix',
+    symbols: ['ETH/USD', 'SOL/USD', 'LINK/USD', 'AAVE/USD', 'PAXG/USD'],
+    budget: 1000,
+    color: '#2F9E44',
+    strategy: 'Vijf soorten coins (Ethereum, Solana, Chainlink, Aave en goud-token PAXG), elk $200 en elk met de 50-daagse trendregel.',
+    schedule: 'elke dag om 12:47, ook in het weekend'
   }
 ];
