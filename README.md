@@ -15,6 +15,7 @@ Simpele tradingbots voor een **Alpaca paper account** (nepgeld), gemaakt samen m
 | `bots/sectorrotatie/` | Zet 1x per maand het geld in de 2 sterkste sector-ETF's van de afgelopen 3 maanden. |
 | `bots/cryptotrend/` | Houdt bitcoin vast boven het 50-daags gemiddelde, anders cash. Draait ook in het weekend. |
 | `bots/cryptomix/` | Vijf soorten coins (ETH, SOL, LINK, AAVE en goud-token PAXG), elk $200 met de 50-daagse trendregel. |
+| `bots/dualmomentum/` | Zet 1x per maand alles in de sterkste aandelenmarkt (VS of wereld), of in obligaties als aandelen slechter doen dan kasgeld. |
 | `docs/` | Het dashboard (GitHub Pages). De botlijst staat in `docs/bots.js`. |
 | `setup.sh` | Slaat je API-sleutels op in `keys.env` (komt nooit op GitHub). |
 
@@ -31,6 +32,7 @@ bots/dipkoper/schedule_on.sh        # dip-koper: elke werkdag vlak voor sluiting
 bots/sectorrotatie/schedule_on.sh   # sector-rotatie: wisselt 1x per maand
 bots/cryptotrend/schedule_on.sh     # crypto-trend: elke dag, ook in het weekend
 bots/cryptomix/schedule_on.sh       # crypto-mix: elke dag, ook in het weekend
+bots/dualmomentum/schedule_on.sh    # dual momentum: wisselt hooguit 1x per maand
 ```
 
 Uitzetten kan per bot met het `schedule_off.sh`- of `scalp_off.sh`-script in zijn map. Je Mac moet tijdens de beurs (15:30 tot 22:00) aanstaan.

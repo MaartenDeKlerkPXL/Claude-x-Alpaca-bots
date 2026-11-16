@@ -64,5 +64,14 @@ window.BOTS = [
     color: '#2F9E44',
     strategy: 'Vijf soorten coins (Ethereum, Solana, Chainlink, Aave en goud-token PAXG), elk $200 en elk met de 50-daagse trendregel.',
     schedule: 'elke dag om 12:47, ook in het weekend'
+  },
+  {
+    name: 'Dual momentum',
+    folder: 'bots/dualmomentum',
+    symbols: ['VTI', 'VEU', 'BND'],
+    budget: 1000,
+    color: '#C2185B',
+    strategy: 'Zet 1x per maand alles in de sterkste aandelenmarkt (VS of rest van de wereld), of in obligaties als aandelen het slechter doen dan kasgeld.',
+    schedule: 'elke werkdag om 15:52, wisselt hooguit 1x per maand'
   }
 ];
